@@ -2,7 +2,7 @@
 	"name": "terminal-file-link",
 	"displayName": "Terminal File Link",
 	"description": "Linkify file names in the terminal.",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"publisher": "danh42",
 	"repository": {
 		"type": "git",
@@ -30,6 +30,11 @@
 						},
 						"default": [],
 						"description": "Base directories for file detection."
+					},
+					"terminalFileLink.fileRegex": {
+						"type": "string",
+						"default": "(?=^|\\s|[(])([a-zA-Z0-9~/._\\-]+)(?:(?:(:[0-9]+)(:[0-9]+)?)|\\(([0-9]+)[,;]?\\s*([0-9]+)?\\))?",
+						"description": "Search regex for file links. Should capture path, line number, column number."
 					}
 				}
 			}

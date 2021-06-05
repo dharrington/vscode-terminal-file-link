@@ -16,11 +16,16 @@ class TerminalLink implements vscode.TerminalLink {
 }
 
 class TerminalLinkProvider implements vscode.TerminalLinkProvider {
-	constructor(private baseDirectories: string[]) {
+	private fileRegexStr: string;
+
+	constructor(
+		private logOut: vscode.OutputChannel,
+		private baseDirectories: string[], fileRegexStr: string) {
+		this.fileRegexStr = fileRegexStr;
 	}
 	provideTerminalLinks(context: vscode.TerminalLinkContext, token: vscode.CancellationToken): vscode.ProviderResult<TerminalLink[]> {
 		return new Promise((resolve) => {
-			const fileRegex = /(?=^|\s|[(])([a-zA-Z0-9~/._\-]+)(?:(?:(:[0-9]+)(:[0-9]+)?)|\(([0-9]+)[,;]?\s*([0-9]+)?\))?/g;
+			const fileRegex = new RegExp(this.fileRegexStr, "g");
 			const results: TerminalLink[] = [];
 			let array;
 			let outstandingStats = 0;
@@ -60,7 +65,10 @@ class TerminalLinkProvider implements vscode.TerminalLinkProvider {
 		});
 	}
 	handleTerminalLink(link: TerminalLink): vscode.ProviderResult<void> {
+		this.logOut.appendLine("Opening " + link.fap.filePath);
+
 		vscode.commands.executeCommand('vscode.open', Uri.file(link.fap.filePath)).then(() => {
+
 			const editor = vscode.window.activeTextEditor;
 			if (!editor || link.fap.line === undefined) { return; }
 			let line = link.fap.line - 1;
@@ -79,14 +87,36 @@ class TerminalLinkProvider implements vscode.TerminalLinkProvider {
 
 export function activate(context: vscode.ExtensionContext) {
 	const init = () => {
+		let logOut = vscode.window.createOutputChannel("terminal-file-link");
+
 		while (context.subscriptions.length > 1) {
 			context.subscriptions.pop()?.dispose();
 		}
-		const baseDirectories = vscode.workspace.getConfiguration().get('terminalFileLink.baseDirectories') as string[];
-		if (baseDirectories.length > 0) {
-			context.subscriptions.push(
-				vscode.window.registerTerminalLinkProvider(new TerminalLinkProvider(baseDirectories)));
+		let baseDirectories = vscode.workspace.getConfiguration().get('terminalFileLink.baseDirectories') as string[];
+		if (baseDirectories.length === 0) {
+			logOut.appendLine("baseDirectories is empty, no files will be linked.");
+			return;
 		}
+		baseDirectories = baseDirectories.map(d => {
+			if (vscode.workspace.workspaceFolders) {
+				return d.replace("${workspaceFolder}", vscode.workspace.workspaceFolders[0].uri.path);
+			}
+			return d;
+		});
+
+		const fileRegex = vscode.workspace.getConfiguration().get('terminalFileLink.fileRegex') as string;
+		try {
+			new RegExp(fileRegex);
+		} catch (e) {
+			logOut.appendLine("fileRegex is invalid: " + e);
+			return;
+		}
+
+		logOut.appendLine("Initialized with " + baseDirectories.join(', '));
+
+		context.subscriptions.push(
+			vscode.window.registerTerminalLinkProvider(new TerminalLinkProvider(logOut, baseDirectories, fileRegex)));
+
 	};
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration((event) => {

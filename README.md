@@ -24,16 +24,19 @@ An example terminal session:
 
 Now 'some/file.h:123' becomes a link to '/root/path/some/file.h:123'
 
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
 ## Extension Settings
 
 * `terminalFileLink.baseDirectories`: List of directories for which paths may be relative.
+* `terminalFileLink.fileRegex`: Regex for identifying file paths.
 
 ## Release Notes
 
 ### 0.1.0
 
 Initial release!
+
+### 0.1.1
+
+* Substitute ${workspaceFolder} if used in baseDirectories.
+* Add fileRegex setting to customize file regex.
+* Add some debug output.
