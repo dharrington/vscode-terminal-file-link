@@ -97,12 +97,19 @@ export function activate(context: vscode.ExtensionContext) {
 			logOut.appendLine("baseDirectories is empty, no files will be linked.");
 			return;
 		}
-		baseDirectories = baseDirectories.map(d => {
-			if (vscode.workspace.workspaceFolders) {
-				return d.replace("${workspaceFolder}", vscode.workspace.workspaceFolders[0].uri.path);
-			}
-			return d;
-		});
+		// expand `${workspaceFolder}` references; if there are multiple
+		// workspace folders, produce a copy of each base directory for each
+		// workspace.
+		baseDirectories = baseDirectories.reduce((acc, d) => {
+			if (vscode.workspace.workspaceFolders && d.includes("${workspaceFolder}")) {
+				return acc.concat(
+				vscode.workspace.workspaceFolders.map(
+						(wsf) => d.replace("${workspaceFolder}", wsf.uri.path)
+					)
+				)
+			};
+			return acc.concat([d]);
+		}, [] as string[]);
 
 		const fileRegex = vscode.workspace.getConfiguration().get('terminalFileLink.fileRegex') as string;
 		try {
