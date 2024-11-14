@@ -33,7 +33,7 @@
 					},
 					"terminalFileLink.fileRegex": {
 						"type": "string",
-						"default": "(?=^|\\s|[(])([a-zA-Z0-9~/._\\-]+)(?:(?:(:[0-9]+)(:[0-9]+)?)|\\(([0-9]+)[,;]?\\s*([0-9]+)?\\))?",
+						"default": "(?<=^|\\s|[(])([\\w~/.\\-]+)(?:(?::(\\d+))(?::(\\d+))?|\\((\\d+)[,;]?\\s*(\\d+)?\\))?",
 						"description": "Search regex for file links. Should capture path, line number, column number."
 					}
 				}
