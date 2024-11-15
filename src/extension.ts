@@ -16,18 +16,18 @@ class TerminalLink implements vscode.TerminalLink {
 }
 
 class TerminalLinkProvider implements vscode.TerminalLinkProvider {
-	private fileRegexStr: string;
+	private fileRegExp: RegExp;
 
 	constructor(
 		private logOut: vscode.OutputChannel,
-		private baseDirectories: string[], fileRegexStr: string) {
-		this.fileRegexStr = fileRegexStr;
+		private baseDirectories: string[],
+		fileRegExp: RegExp
+	) {
+		this.fileRegExp = fileRegExp;
 	}
 	provideTerminalLinks(context: vscode.TerminalLinkContext, token: vscode.CancellationToken): vscode.ProviderResult<TerminalLink[]> {
 		return new Promise((resolve) => {
-			const fileRegex = new RegExp(this.fileRegexStr, "g");
 			const results: TerminalLink[] = [];
-			let array;
 			let outstandingStats = 0;
 			const checkFile = (ok: boolean, offset: number, length: number, fap: FileAndPos) => {
 				--outstandingStats;
@@ -38,23 +38,25 @@ class TerminalLinkProvider implements vscode.TerminalLinkProvider {
 					resolve(results);
 				}
 			};
-			while ((array = fileRegex.exec(context.line)) !== null && !token.isCancellationRequested) {
-				const matchIndex = fileRegex.lastIndex;
-				const match = array[0];
-				let line = array[2] !== undefined ? Number(array[2].substr(1)) : undefined;
-				if (line === undefined && array[4] !== undefined) {
-					line = Number(array[4]);
+			for (const matched of context.line.matchAll(this.fileRegExp)) {
+				if (token.isCancellationRequested) { break; };
+				const matchIndex = (matched.indices as RegExpIndicesArray)[0][0];
+				const match = matched[0];
+
+				let line = matched[2] !== undefined ? Number(matched[2]) : undefined;
+				if (line === undefined && matched[4] !== undefined) {
+					line = Number(matched[4]);
 				}
-				let col = array[3] !== undefined ? Number(array[3].substr(1)) : undefined;
-				if (col === undefined && array[5] !== undefined) {
-					col = Number(array[5]);
+				let col = matched[3] !== undefined ? Number(matched[3]) : undefined;
+				if (col === undefined && matched[5] !== undefined) {
+					col = Number(matched[5]);
 				}
 				for (const base of this.baseDirectories) {
-					const fap = new FileAndPos(path.join(base, array[1]), line, col);
+					const fap = new FileAndPos(path.join(base, matched[1]), line, col);
 					if (outstandingStats < MAX_STAT_CALLS_PER_LINE) {
 						++outstandingStats;
 						fs.stat(fap.filePath, (err, stats) => {
-							checkFile(!err && stats.isFile(), matchIndex - match.length, match.length, fap);
+							checkFile(!err && stats.isFile(), matchIndex, match.length, fap);
 						});
 					}
 				}
@@ -92,7 +94,8 @@ export function activate(context: vscode.ExtensionContext) {
 		while (context.subscriptions.length > 1) {
 			context.subscriptions.pop()?.dispose();
 		}
-		let baseDirectories = vscode.workspace.getConfiguration().get('terminalFileLink.baseDirectories') as string[];
+		let config = vscode.workspace.getConfiguration("terminalFileLink");
+		let baseDirectories = config.get('baseDirectories') as string[];
 		if (baseDirectories.length === 0) {
 			logOut.appendLine("baseDirectories is empty, no files will be linked.");
 			return;
@@ -111,9 +114,10 @@ export function activate(context: vscode.ExtensionContext) {
 			return acc.concat([d]);
 		}, [] as string[]);
 
-		const fileRegex = vscode.workspace.getConfiguration().get('terminalFileLink.fileRegex') as string;
+		const fileRegex = config.get('fileRegex') as string;
+		let compiledRegExp;
 		try {
-			new RegExp(fileRegex);
+			compiledRegExp = new RegExp(fileRegex, 'dg');
 		} catch (e) {
 			logOut.appendLine("fileRegex is invalid: " + e);
 			return;
@@ -122,7 +126,7 @@ export function activate(context: vscode.ExtensionContext) {
 		logOut.appendLine("Initialized with " + baseDirectories.join(', '));
 
 		context.subscriptions.push(
-			vscode.window.registerTerminalLinkProvider(new TerminalLinkProvider(logOut, baseDirectories, fileRegex)));
+			vscode.window.registerTerminalLinkProvider(new TerminalLinkProvider(logOut, baseDirectories, compiledRegExp)));
 
 	};
 	context.subscriptions.push(
