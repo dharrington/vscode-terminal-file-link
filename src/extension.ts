@@ -85,10 +85,10 @@ class TerminalLinkProvider implements vscode.TerminalLinkProvider {
 	}
 }
 
-export function activate(context: vscode.ExtensionContext) {
-	const init = () => {
-		let logOut = vscode.window.createOutputChannel("terminal-file-link");
+export function activate(context: vscode.ExtensionContext) {	
+	let logOut = vscode.window.createOutputChannel("Terminal File Link");
 
+	const init = () => {
 		while (context.subscriptions.length > 1) {
 			context.subscriptions.pop()?.dispose();
 		}
