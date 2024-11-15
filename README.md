@@ -40,3 +40,8 @@ Initial release!
 * Substitute ${workspaceFolder} if used in baseDirectories.
 * Add fileRegex setting to customize file regex.
 * Add some debug output.
+
+### 0.1.2
+
+* Substitute all workspace folders for ${workspaceFolder}
+* Don't create the debug output channel more than once
